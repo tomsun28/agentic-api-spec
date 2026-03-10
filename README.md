@@ -1,52 +1,55 @@
+<p align="center">
+ English | <b><a href="README_CN.md">中文</a></b> 
+</p>
+
 ## Agent API Spec Design: When API Callers Change from Application to AI Agent
 
-在现在 AI Agent 开发和使用中，我们习惯于给 Agent 喂上下文 - Skill Tool MCP Prompt。
+In current AI Agent development, we are used to feeding context to Agents using Skills, Tools, MCP, or Prompts.
 
-随着 agent tool 的持续进化，MCP 现在大家已经对其没有刚开始出来的时候那么热情了，它规范了API的调用方式，但同样的它让事情变得复杂，需要有支持其协议的客户端，调用的对端还需要对应的服务器协议实现，但如果只是包一堆 API 接口，那为什么不是直接写代码调用那些 API 呢，Skill 就更加合适的代替它了，重要的，它还有整个能让模型更容易理解的使用说明文档。
+As agent tools continue to evolve, the initial hype around MCP has cooled down. While it standardizes how APIs are called, it also makes things more complex. It requires clients that support its protocol, and the server needs a matching protocol implementation. If it's just wrapping a bunch of API endpoints, why not just write code to call those APIs directly? Skill is a better alternative for this. More importantly, it provides instruction manuals that models can easily understand.
 
-在 openclaw, 除了它的统一对外消息链接的 gateway 和定时任务机制，它拥有的 skill 的能力与 clawhub 肯定也是让他如此火爆的原因。Skill 的渐进式披露一定程度改善了模型的上下文，但对于复杂系统的skill来说，其过大 skill.md 内容还是会充满模型。同时，它是一个客户端方案，我们需要手工安装维护 skill ，且其版本要跟服务端API对齐，后端接口稍微改个路径或参数，Skill 得全量更新。在 Agent 的世界里，它调用 API 拿到数据后，知道下一步能干什么， 但他是很早之前就知道的， 并且知道了很多不想知道的， 而不是刚刚知道的。
+For OpenClaw, besides its unified message gateway and cron job mechanism, its Skill capabilities and ClawHub are certainly big reasons for its popularity. The progressive disclosure of Skills helps improve the model's context. However, for complex systems, a huge `skill.md` file can still overload the model. Also, since it is a client-side solution, we have to manually install and maintain skills. Their versions must match the server APIs. If a backend endpoint slightly changes a path or a parameter, the Skill needs a full update. In the Agent's world, after it calls an API and gets data, it knows what it can do next—but it actually knew this way ahead of time, and it was forced to learn a lot of things it didn't need to know, rather than just learning what it needs right now.
 
-基于上，在想是否能做到更细的渐进式纰漏，它不会有状态信息差异，不需要客户端安装，让模型能完成任务的前提下，知道的越少越好。于是就设计了下面这个API规范，看能否在服务端侧和Skill形成互补，让agent的规划，调用更顺畅，智能。
+Because of this, I wonder if we can do an even finer-grained progressive disclosure. It wouldn't have state sync issues, wouldn't need client installation, and would let the model know as little as possible while still getting the job done. Therefore, I designed the following API specification to see if it can work together with Skills on the server side, making agent planning and API calling smoother and smarter.
 
-以上我们讨论的是那些面向服务API的Skill，本地技能等Skill忽略。
+*Note: The discussion above is about service API-oriented Skills, ignoring local skills.*
 
 
 ## Agentic API Design
 
-> 这是一个面向 Agent 原生的 API 设计规范。它的核心逻辑是：不要让 Agent 去背全部文档，要让 API 自己会说话。
+> This is an API design specification built natively for Agents. Its core logic is: don't make the Agent memorize the whole documentation; let the API speak for itself.
 
 
-### 1. 核心响应结构
+### 1. Core Response Structure
 
-这里需要所有业务 API 响应包含三个核心字段：
+This requires all business API responses to include three core fields:
 
-```
+```json
 {
-  "data": {},    // 业务数据
-  "error": {},   // 错误控制
-  "relates": []  // 关联动作（导航信息）
+  "data": {},    // Business data
+  "error": {},   // Error control
+  "relates": []  // Related actions (navigation info)
 }
-
 ```
 
-* **data 代表"当前状态"**：返回的是当前的业务真实数据，让 Agent 了解当前的业务状态。
-* **error 提供"反馈机制"**：通过稳定的错误码（如 `TASK_LOCKED`），让 Agent 能够执行预设的逻辑分支，而不是依赖模糊的文本描述。
-* **relates 指示"后续可能性"**：关键设计点。不让 Agent 推测"获得 ID 后应该调用哪个接口"，而是在响应中直接告知可用的"下一步"API操作。
+* **`data` represents the "current state"**: It returns the real business data, letting the Agent know the current status.
+* **`error` provides a "feedback mechanism"**: By using stable error codes (like `TASK_LOCKED`), the Agent can run specific logic instead of guessing from vague error messages.
+* **`relates` shows "future options"**: This is the key design. Instead of making the Agent guess "which API should I call after getting this ID?", the response directly tells it what "next step" API operations are available.
 
-全貌例如下:
+The full structure looks like this:
 
-```
+```json
 {
   "data": object,
   "error": {
-    code: string,
-    message: string
+    "code": string,
+    "message": string
   },
   "relates": [
     {
       "method": "GET|POST|PUT|DELETE",
       "path": "/path/to/resource",
-      "desc": "简短说明 API 意图和参数用途",
+      "desc": "A brief description of the API's intent and parameters",
       "schema": "typechat schema define = { param: string; }"
     }
   ]
@@ -55,11 +58,11 @@
 
 ---
 
-### 2. Relates：将“文档”注入“运行时”
+### 2. Relates: Injecting "Documentation" into "Runtime"
 
-传统的 API 是孤岛，而 Agent 需要的是一张图。在 `relates` 结构中定义了当前所调用的API其关联的其它 API 的完整的动作指南：
+Traditional APIs are isolated islands, but an Agent needs a map. The `relates` structure provides a complete action guide for other APIs related to the current one:
 
-```
+```json
 {
   "data": { "id": "task_123", "title": "Fix bug" },
   "relates": [
@@ -83,16 +86,15 @@
     }
   ]
 }
-
 ```
 
-### 3. API Discovery：图的入口
+### 3. API Discovery: The Entry Point to the Map
 
-为了解决 Agent 的"冷启动"问题，还需要有统一入口：`GET /api/discovery`。
+To solve the Agent's "cold start" problem, we need a unified entry point: `GET /api/discovery`.
 
-该接口不返回业务数据，返回当前用户权限下可执行的**顶层操作API**。这为 Agent 提供了系统全貌以执行规划（这里我们也需要考虑暴露的粒度）：
+This endpoint does not return business data. Instead, it returns the **top-level operation APIs** that the current user is allowed to use. This gives the Agent a full view of the system to plan its tasks (we also need to consider how much detail to expose here):
 
-```
+```json
 {
   "relates": [
     {
@@ -113,24 +115,23 @@
 
 ---
 
-**对比一下：**
+**Let's compare:**
 
-* **传统做法**：Agent 查阅几千字的静态文档，寻找创建任务的方法。
-* **这里做法**：Agent 请求任务列表后，响应体直接带上了“创建任务”的接口定义和参数枚举。Agent 只需要根据 `desc`（描述）匹配意图后规划调用。
+* **Traditional approach**: The Agent reads a massive static document to find how to create a task.
+* **This approach**: After the Agent requests the task list, the response directly includes the interface and parameters for "create task". The Agent just matches its goal with the `desc` (description) and makes the call.
 
-这种设计本质上是把 **API 的发现逻辑从“静态 Prompt”转到了“动态响应”** 中。
+This design essentially shifts the **API discovery logic from "static Prompts" to "dynamic responses"**.
 
-### 4. 为什么不直接用 Skill 模式？
+### 4. Why Not Just Use the Skill Mode?
 
-
-| 维度 | Skill 模式 | API 规范 (Relates) |
+| Feature | Skill Mode | API Spec (Relates) |
 | --- | --- | --- |
-| **感知能力** | 静态感知。启动须告知所有能力。 | 动态感知。根据当前数据状态实时下发能力。 |
-| **Token 消耗** | 随着功能增加线性增长，很容易撑爆。 | 只需一个 `Discovery` 接口，后续按需下发。 |
-| **解耦程度** | 后端改代码，Prompt 也要改。 | 后端改代码，Agent 自动根据 `relates` 适应。 |
+| **Awareness** | Static awareness. Must be told all capabilities at startup. | Dynamic awareness. Capabilities are sent in real-time based on the current data state. |
+| **Token Cost** | Grows linearly as features are added; easily hits token limits. | Only needs one `Discovery` endpoint; the rest is sent on demand. |
+| **Decoupling** | If backend code changes, Prompts must also change. | If backend code changes, the Agent automatically adapts via `relates`. |
 
 ---
 
-### 5. 总结
+### 5. Summary
 
-在 agent 规划调用服务端 API 这个场景下，这套规范确实增加了后端的开发复杂度——需要额外维护 `relates` 的生成逻辑，但看在以后都是 agent 的份上，还是可以接受的。
+For Agents planning and calling server-side APIs, this specification does add some backend development complexity—we have to maintain the code that generates `relates`. However, considering a future where Agents are everywhere, this is an acceptable trade-off.
