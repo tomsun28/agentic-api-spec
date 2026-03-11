@@ -97,7 +97,7 @@ This endpoint does not return business data. Instead, it returns the **top-level
 ```
 # Project Name
 
-project description, how to use and soon.
+project description, usage guide, and more.
 
 ## Entry APIs
 
@@ -121,13 +121,13 @@ schema: interface ListTasks { page?: number; limit?: number; status?: 'todo' | '
 
 This design essentially shifts the **API discovery logic from "static Prompts" to "dynamic responses"**.
 
-### 4. Why Not Just Use the Skill Mode?
+### 4. Comparison
 
-| Feature | Skill Mode | API Spec (Relates) |
-| --- | --- | --- |
-| **Awareness** | Static awareness. Must be told all capabilities at startup. | Dynamic awareness. Capabilities are sent in real-time based on the current data state. |
-| **Token Cost** | Grows linearly as features are added; easily hits token limits. | Only needs one `Discovery` endpoint; the rest is sent on demand. |
-| **Decoupling** | If backend code changes, Prompts must also change. | If backend code changes, the Agent automatically adapts via `relates`. |
+| Dimension | Traditional API | Skill Mode | Agentic API |
+|-----------|----------------|------------|-------------|
+| Awareness | Trial and error with prompt stuffing | Static awareness. Documentation tells all capabilities. | Dynamic awareness. Real-time capability delivery based on current data state. |
+| Token Consumption | Repeated calls during trial and error | Linear growth with features, easily explodes. | Only one `llms.txt` endpoint, on-demand delivery afterwards. |
+| Decoupling | Hard to use, no coupling | Backend code changes require prompt updates. | Backend code changes, Agent automatically adapts via `relates`. |
 
 ---
 
