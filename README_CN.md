@@ -2,7 +2,7 @@
 <b><a href="README.md">English</a></b> | 中文
 </p>
 
-## Agent API Spec Design: When API Callers Change from Application to AI Agent
+## Agentic API Spec Design: When API Callers Change from Application to AI Agent
 
 在现在 AI Agent 开发和使用中，我们习惯于给 Agent 喂上下文 - Skill Tool MCP Prompt。
 
@@ -92,27 +92,26 @@
 
 ### 3. API Discovery：图的入口
 
-为了解决 Agent 的"冷启动"问题，还需要有统一入口：`GET /api/discovery`。
+为了解决 Agent 的"冷启动"问题，还需要有统一入口：`GET /api/llms.txt`。
 
-该接口不返回业务数据，返回当前用户权限下可执行的**顶层操作API**。这为 Agent 提供了系统全貌以执行规划（这里我们也需要考虑暴露的粒度）：
+该接口不返回业务数据，返回当前用户权限下可执行的**顶层操作API**和系统描述。这为 Agent 提供了系统全貌以执行规划（这里我们也需要考虑暴露的粒度）：
 
 ```
-{
-  "relates": [
-    {
-      "method": "POST",
-      "path": "/tasks",
-      "desc": "Create a new task with specified priority",
-      "schema": "interface CreateTask { title: string; priority: 'low' | 'medium' | 'high'; description?: string; }"
-    },
-    {
-      "method": "GET",
-      "path": "/tasks",
-      "desc": "List all tasks with pagination",
-      "schema": "interface ListTasks { page?: number; limit?: number; status?: 'todo' | 'done'; }"
-    }
-  ]
-}
+# Project Name
+
+project description, how to use and soon.
+
+## Entry APIs
+
+### POST /tasks
+desc: Create a new task with specified priority  
+schema: interface CreateTask { title: string; priority: 'low' | 'medium' | 'high'; description?: string; }
+
+
+### GET /tasks
+desc: List all tasks with pagination  
+schema: interface ListTasks { page?: number; limit?: number; status?: 'todo' | 'done'; }
+
 ```
 
 ---

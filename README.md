@@ -2,7 +2,7 @@
  English | <b><a href="README_CN.md">中文</a></b> 
 </p>
 
-## Agent API Spec Design: When API Callers Change from Application to AI Agent
+## Agentic API Spec Design: When API Callers Change from Application to AI Agent
 
 In current AI Agent development, we are used to feeding context to Agents using Skills, Tools, MCP, or Prompts.
 
@@ -90,27 +90,26 @@ Traditional APIs are isolated islands, but an Agent needs a map. The `relates` s
 
 ### 3. API Discovery: The Entry Point to the Map
 
-To solve the Agent's "cold start" problem, we need a unified entry point: `GET /api/discovery`.
+To solve the Agent's "cold start" problem, we need a unified entry point: `GET /api/llms.txt`.
 
 This endpoint does not return business data. Instead, it returns the **top-level operation APIs** that the current user is allowed to use. This gives the Agent a full view of the system to plan its tasks (we also need to consider how much detail to expose here):
 
-```json
-{
-  "relates": [
-    {
-      "method": "POST",
-      "path": "/tasks",
-      "desc": "Create a new task with specified priority",
-      "schema": "interface CreateTask { title: string; priority: 'low' | 'medium' | 'high'; description?: string; }"
-    },
-    {
-      "method": "GET",
-      "path": "/tasks",
-      "desc": "List all tasks with pagination",
-      "schema": "interface ListTasks { page?: number; limit?: number; status?: 'todo' | 'done'; }"
-    }
-  ]
-}
+```
+# Project Name
+
+project description, how to use and soon.
+
+## Entry APIs
+
+### POST /tasks
+desc: Create a new task with specified priority  
+schema: interface CreateTask { title: string; priority: 'low' | 'medium' | 'high'; description?: string; }
+
+
+### GET /tasks
+desc: List all tasks with pagination  
+schema: interface ListTasks { page?: number; limit?: number; status?: 'todo' | 'done'; }
+
 ```
 
 ---
